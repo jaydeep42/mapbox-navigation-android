@@ -7,12 +7,16 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 
+import com.mapbox.api.directions.v5.models.DirectionsResponse;
+import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Point;
+import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.services.android.navigation.testapp.R;
 import com.mapbox.services.android.navigation.ui.v5.NavigationView;
 import com.mapbox.services.android.navigation.ui.v5.NavigationViewOptions;
 import com.mapbox.services.android.navigation.ui.v5.OnNavigationReadyCallback;
 import com.mapbox.services.android.navigation.ui.v5.listeners.NavigationListener;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 import com.mapbox.services.android.navigation.v5.routeprogress.ProgressChangeListener;
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress;
 import com.mapbox.services.android.navigation.v5.utils.RouteUtils;
@@ -20,8 +24,12 @@ import com.mapbox.services.android.navigation.v5.utils.RouteUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class WaypointNavigationActivity extends AppCompatActivity implements OnNavigationReadyCallback,
-  NavigationListener, ProgressChangeListener {
+  NavigationListener, ProgressChangeListener, Callback<DirectionsResponse> {
 
   private NavigationView navigationView;
   private boolean dropoffDialogShown;
@@ -102,19 +110,7 @@ public class WaypointNavigationActivity extends AppCompatActivity implements OnN
 
   @Override
   public void onNavigationReady() {
-    navigationView.startNavigation(setupOptions(points.remove(0)));
-  }
-
-  private NavigationViewOptions setupOptions(Point origin) {
-    dropoffDialogShown = false;
-
-    NavigationViewOptions.Builder options = NavigationViewOptions.builder();
-    options.navigationListener(this);
-    options.progressChangeListener(this);
-//    options.origin(origin);
-//    options.destination(points.remove(0));
-    options.shouldSimulateRoute(true);
-    return options.build();
+    fetchRoute(points.remove(0), points.remove(0));
   }
 
   @Override
@@ -144,25 +140,57 @@ public class WaypointNavigationActivity extends AppCompatActivity implements OnN
     }
   }
 
+  @Override
+  public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
+    startNavigation(response.body().routes().get(0));
+  }
+
+  @Override
+  public void onFailure(Call<DirectionsResponse> call, Throwable t) {
+
+  }
+
+  private void startNavigation(DirectionsRoute directionsRoute) {
+    NavigationViewOptions navigationViewOptions = setupOptions(directionsRoute);
+    navigationView.startNavigation(navigationViewOptions);
+  }
+
   private void showDropoffDialog() {
     AlertDialog alertDialog = new AlertDialog.Builder(this).create();
     alertDialog.setMessage(getString(R.string.dropoff_dialog_text));
     alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, getString(R.string.dropoff_dialog_positive_text),
-      new DialogInterface.OnClickListener() {
-        @Override
-        public void onClick(DialogInterface dialogInterface, int in) {
-          navigationView.startNavigation(
-            setupOptions(Point.fromLngLat(lastKnownLocation.getLongitude(), lastKnownLocation.getLatitude())));
-        }
-      });
+      (dialogInterface, in) -> fetchRoute(getLastKnownLocation(), points.remove(0)));
     alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, getString(R.string.dropoff_dialog_negative_text),
-      new DialogInterface.OnClickListener() {
-        @Override
-        public void onClick(DialogInterface dialogInterface, int in) {
-          // Do nothing
-        }
+      (dialogInterface, in) -> {
+        // Do nothing
       });
 
     alertDialog.show();
+  }
+
+  private void fetchRoute(Point origin, Point destination) {
+    NavigationRoute.builder()
+      .accessToken(Mapbox.getAccessToken())
+      .origin(origin)
+      .destination(destination)
+      .alternatives(true)
+      .languageAndVoiceUnitsFromContext(this)
+      .build()
+      .getRoute(this);
+  }
+
+  private NavigationViewOptions setupOptions(DirectionsRoute directionsRoute) {
+    dropoffDialogShown = false;
+
+    NavigationViewOptions.Builder options = NavigationViewOptions.builder();
+    options.directionsRoute(directionsRoute)
+      .navigationListener(this)
+      .progressChangeListener(this)
+      .shouldSimulateRoute(true);
+    return options.build();
+  }
+
+  private Point getLastKnownLocation() {
+    return Point.fromLngLat(lastKnownLocation.getLongitude(), lastKnownLocation.getLatitude());
   }
 }
