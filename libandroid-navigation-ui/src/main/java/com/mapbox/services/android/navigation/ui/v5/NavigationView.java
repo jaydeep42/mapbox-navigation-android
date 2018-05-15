@@ -368,7 +368,7 @@ public class NavigationView extends CoordinatorLayout implements LifecycleObserv
   public void startNavigation(NavigationViewOptions options) {
     if (!isInitialized) {
       establish(options);
-      navigationViewModel.initializeNavigation(options, navigationViewEventDispatcher);
+      navigationViewModel.initializeNavigation(options);
       initNavigationListeners(options, navigationViewModel.getNavigation());
       initNavigationCamera();
       subscribeViewModels();
@@ -406,7 +406,7 @@ public class NavigationView extends CoordinatorLayout implements LifecycleObserv
     InstructionLoader.getInstance().initialize(getContext());
     inflate(getContext(), R.layout.navigation_view_layout, this);
     bind();
-    initViewModels();
+    initNavigationViewModel();
     initSummaryBottomSheet();
     initNavigationEventDispatcher();
   }
@@ -419,7 +419,7 @@ public class NavigationView extends CoordinatorLayout implements LifecycleObserv
     recenterBtn = findViewById(R.id.recenterBtn);
   }
 
-  private void initViewModels() {
+  private void initNavigationViewModel() {
     try {
       navigationViewModel = ViewModelProviders.of((FragmentActivity) getContext()).get(NavigationViewModel.class);
     } catch (ClassCastException exception) {
@@ -448,6 +448,7 @@ public class NavigationView extends CoordinatorLayout implements LifecycleObserv
 
   private void initNavigationEventDispatcher() {
     navigationViewEventDispatcher = new NavigationViewEventDispatcher();
+    navigationViewModel.initializeEventDispatcher(navigationViewEventDispatcher);
   }
 
   /**
