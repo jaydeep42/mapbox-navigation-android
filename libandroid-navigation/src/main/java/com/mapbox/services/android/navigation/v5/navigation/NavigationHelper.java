@@ -47,6 +47,7 @@ public class NavigationHelper {
   private static final int INDEX_ZERO = 0;
   private static final String EMPTY_STRING = "";
   private static final double ZERO_METERS = 0d;
+  private static final int TWO_POINTS = 2;
 
   private NavigationHelper() {
     // Empty private constructor to prevent users creating an instance of this class.
@@ -299,10 +300,9 @@ public class NavigationHelper {
                                                                              List<StepIntersection> intersections) {
     List<Pair<StepIntersection, Double>> distancesToIntersections = new ArrayList<>();
     List<StepIntersection> stepIntersections = new ArrayList<>(intersections);
-    if (stepPoints.isEmpty()) {
-      return distancesToIntersections;
-    }
-    if (stepIntersections.isEmpty()) {
+    boolean invalidPointList = stepPoints.size() < TWO_POINTS;
+    boolean emptyIntersectionList = stepIntersections.isEmpty();
+    if (invalidPointList || emptyIntersectionList) {
       return distancesToIntersections;
     }
 
